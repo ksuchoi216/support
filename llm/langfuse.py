@@ -25,9 +25,10 @@ def _resolve_local_prompt_path(
 def load_prompt(
     prompt_key: str,
     *,
+    local_prompt: bool = False,
     prompt_dir: str | Path | None = None,
 ) -> BasePromptTemplate | str:
-    if prompt_dir is None:
+    if local_prompt or prompt_dir is not None:
         prompt_path = _resolve_local_prompt_path(prompt_key, prompt_dir)
         prompt_text = prompt_path.read_text(encoding="utf-8")
         logger.info("Prompt {} loaded from local file {}.", prompt_key, prompt_path)

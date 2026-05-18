@@ -10,7 +10,7 @@ from langchain_openai import ChatOpenAI
 from loguru import logger
 from pydantic import BaseModel
 
-from .config import OpenAINodeConfig
+from core.support.config import OpenAINodeConfig
 from .langfuse import load_prompt
 from .models import REASONING_MODELS, ModelNames
 
@@ -92,6 +92,7 @@ def build_chain(
     *,
     model_config: OpenAINodeConfig,
     prompt_key: str,
+    local_prompt: bool = False,
     local_prompt_dir: str | Path | None = None,
     output_parser=None,
     is_chat: bool = False,
@@ -100,6 +101,7 @@ def build_chain(
 ):
     prompt = load_prompt(
         prompt_key,
+        local_prompt=local_prompt,
         prompt_dir=local_prompt_dir,
     )
     llm = build_bound_llm(
@@ -112,7 +114,7 @@ def build_chain(
     if is_chat:
         chain = llm | parser
     else:
-        prompter = PromptTemplate.from_template(self.prompt)
+        prompter = PromptTemplate.from_template(prompt)
         chain = prompter | llm | parser
 
     return prompt, parser, chain

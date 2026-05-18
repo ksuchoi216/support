@@ -12,7 +12,7 @@ from langchain_core.runnables import RunnableConfig
 from loguru import logger
 
 from .chains import build_chain
-from .config import OpenAINodeConfig
+from core.support.config import OpenAINodeConfig
 
 load_dotenv(find_dotenv(usecwd=True))
 
@@ -41,7 +41,7 @@ class GeneralNode:
         self,
         *,
         model_config: OpenAINodeConfig,
-        preprocess_input: Callable[[dict], dict[str, Any] | None],
+        override_input: Callable[[dict], dict[str, Any] | None],
         state_save_key: str,
         prompt_key: str,
         local_prompt: bool = False,
@@ -61,7 +61,7 @@ class GeneralNode:
         self.prompt_key = prompt_key
         self.local_prompt = local_prompt
         self.local_prompt_dir = local_prompt_dir
-        self.preprocess_input = preprocess_input
+        self.override_input = override_input
         self.update_state_for_input = update_state_for_input
         self.update_state_from_output = update_state_from_output
         self.output_parser = output_parser
@@ -134,9 +134,9 @@ class GeneralNode:
             state = self._update_state_for_input(state)
             logger.info("============= {} ==============", self.node_name)
 
-            inputs = self.preprocess_input(state) or {}
+            inputs = self.override_input(state) or {}
             if not isinstance(inputs, Mapping):
-                raise TypeError("preprocess_input must return a mapping or None.")
+                raise TypeError("override_input must return a mapping or None.")
 
             resolved_inputs = dict(inputs)
             if isinstance(self.parser, PydanticOutputParser):

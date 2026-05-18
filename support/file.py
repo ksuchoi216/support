@@ -20,10 +20,10 @@ def load_file(path) -> Any:
             with open(path, "r", encoding="utf-8") as f:
                 loaded_file = f.read()
         elif extension == "csv":
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, "r", encoding="utf-8-sig") as f:
                 loaded_file = pd.read_csv(f, encoding="utf-8")
         elif extension == "json":
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, "r", encoding="utf-8-sig") as f:
                 loaded_file = json.load(f)
         elif extension == "yaml":
             with open(path, "r", encoding="utf-8") as f:
