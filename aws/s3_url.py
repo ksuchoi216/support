@@ -77,13 +77,23 @@ class S3Location:
     @property
     def local_raw_doc_path(self) -> Path:
         """Local path for the downloaded raw document.  e.g. './temp/artifacts/학생 생기부.pdf'"""
-        return Path(self.download_dir) / self.artifact_foldername / self.raw_doc_filename
+        return (
+            Path(self.download_dir) / self.artifact_foldername / self.raw_doc_filename
+        )
 
     def download_raw_doc(self, local_path: Path | str | None = None) -> Path:
         """Download the raw document from S3. Returns the local path."""
-        target_path = Path(local_path) if local_path is not None else self.local_raw_doc_path
+        target_path = (
+            Path(local_path) if local_path is not None else self.local_raw_doc_path
+        )
         return download_from_s3(
             bucket=self.bucket,
             prefix=self.raw_doc_s3_key,
             local_path=target_path,
         )
+
+    def get_local_artifact_path(self, artifact_filename: str) -> Path:
+        return self.local_artifact_dir / artifact_filename
+
+    def get_artifact_s3_path(self, artifact_filename: str) -> str:
+        return f"{self.artifact_s3_prefix}/{artifact_filename}"

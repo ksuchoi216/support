@@ -87,7 +87,9 @@ def load_general_config(
     return to_namespace(config)
 
 
-def load_config(config_dir: str | Path = "configs") -> SimpleNamespace:
+def load_config(
+    config_dir: str | Path = "configs", is_test: bool = False
+) -> SimpleNamespace:
     config_dir = Path(config_dir)
 
     general_config_path: str | Path = config_dir / "general.yaml"
@@ -104,6 +106,11 @@ def load_config(config_dir: str | Path = "configs") -> SimpleNamespace:
         if model_config_path is not None
         else OpenAIConfigCollection()
     )
+
+    if is_test:
+        for node_config in vars(model_config).values():
+            if not node_config.model_name.endswith("-mini"):
+                node_config.model_name = f"{node_config.model_name}-mini"
 
     return SimpleNamespace(
         **vars(general_config),

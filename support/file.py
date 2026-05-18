@@ -1,19 +1,18 @@
 import json
 import os
 import pickle
-from ast import Set
 from typing import Any
 
 import numpy as np
 import pandas as pd
 import yaml
 from loguru import logger
-from networkx import dfs_labeled_edges
-from nibabel import test
-from sqlalchemy.sql import table
+from pathlib import Path
 
 
-def load_file(path) -> Any:
+def load_file(path: str | Path) -> Any:
+    if isinstance(path, Path):
+        path = path.as_posix()
     extension = path.split(".")[-1]
     try:
         if extension == "txt":
@@ -43,7 +42,9 @@ def load_file(path) -> Any:
         ) from e
 
 
-def save_file(data: Any, path: str):
+def save_file(data: Any, path: str | Path):
+    if isinstance(path, Path):
+        path = path.as_posix()
     parent_dir = os.path.dirname(path)
     if not os.path.exists(parent_dir):
         os.makedirs(parent_dir)

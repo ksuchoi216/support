@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from core.support.file import load_file
+import os
+
 from langchain_core.prompts import BasePromptTemplate
 from langfuse import observe, propagate_attributes
 from langfuse.langchain import CallbackHandler
@@ -51,18 +54,41 @@ def load_prompt(
     raise TypeError(f"Unsupported Langfuse prompt type: {type(prompt)!r}")
 
 
-# TODO: add a function about downloading prompts from langfuse
 def download_prompt(
     prompt_key: str,
     *,
     prompt_dir: str | Path | None = None,
 ) -> None:
-    pass
+    try:
+        from langfuse import get_client
+    except ImportError as exc:
+        raise RuntimeError(
+            "Langfuse is required to download prompt keys. Install langfuse first."
+        ) from exc
+
+    prompt = get_client().get_prompt(prompt_key).get_langchain_prompt()
+    if isinstance(prompt, BasePromptTemplate):
+        prompt_text = prompt.format()
+    elif isinstance(prompt, str):
+        prompt_text = prompt
+    else:
+        raise TypeError(f"Unsupported Langfuse prompt type: {type(prompt)!r}")
+
+    prompt_path = _resolve_local_prompt_path(prompt_key, prompt_dir)
+    prompt_path.parent.mkdir(parents=True, exist_ok=True)
+    prompt_path.write_text(prompt_text, encoding="utf-8")
+    logger.info("Prompt {} downloaded from Langfuse to {}.", prompt_key, prompt_path)
 
 
-# TODO: set a function about changing project api key by using os.environ
-def set_project_api_key():
-    pass
+def download_prompts_from_prompt_keys(
+    prompt_keys_path="configs/prompt_keys.yaml", local_prompt_dir="prompts"
+):
+    if not os.path.exists(prompt_keys_path):
+        raise FileNotFoundError(f"Prompt list file not found at {prompt_keys_path}")
+
+    prompt_keys = load_file(prompt_keys_path)
+    for prompt_key in prompt_keys:
+        download_prompt(prompt_key, prompt_dir=local_prompt_dir)
 
 
 @observe
