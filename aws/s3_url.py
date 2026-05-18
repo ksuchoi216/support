@@ -23,33 +23,47 @@ def refine_prefix(s3_url: str, bucket: str) -> str:
 
 
 @dataclass
-class S3Info:
+class S3Location:
+    """
+    Resolves S3 and local paths for a document and its artifacts.
+
+    Example:
+        s3_url = "s3://my-bucket/915/학생 생기부.pdf"
+        loc = S3Location(s3_url)
+    """
+
     s3_url: str
     artifact_foldername: str = "artifacts"
     download_dir: str = "./temp"
 
     @property
     def bucket(self) -> str:
+        """S3 bucket name.  e.g. 'my-bucket'"""
         return extract_bucket_from_s3_url(self.s3_url)
 
     @property
     def raw_doc_prefix(self) -> str:
+        """S3 key for the raw document.  e.g. '915/학생 생기부.pdf'"""
         return refine_prefix(self.s3_url, self.bucket)
 
     @property
     def artifact_prefix(self) -> str:
+        """S3 prefix for artifacts.  e.g. '915/학생 생기부.pdf/artifacts'"""
         return f"{self.raw_doc_prefix}/{self.artifact_foldername}"
 
     @property
-    def local_artifact_dir(self):
+    def local_artifact_dir(self) -> Path:
+        """Local directory for artifacts.  e.g. './temp/artifacts'"""
         return Path(self.download_dir) / self.artifact_foldername
 
     @property
     def filename(self) -> str:
+        """Filename of the raw document.  e.g. '학생 생기부.pdf'"""
         return Path(self.raw_doc_prefix).name
 
     @property
     def extension(self) -> str:
+        """File extension of the raw document.  e.g. '.pdf'"""
         for ext in [".pdf", ".html", ".txt"]:
             if self.raw_doc_prefix.lower().endswith(ext):
                 return ext
@@ -57,14 +71,16 @@ class S3Info:
 
     @property
     def prefix(self) -> str:
-        # Stable removal of extension even if filename contains multiple dots
+        """S3 key without the extension.  e.g. '915/학생 생기부'"""
         return self.raw_doc_prefix.removesuffix(self.extension)
 
     @property
     def local_raw_doc_path(self) -> Path:
+        """Local path for the downloaded raw document.  e.g. './temp/artifacts/학생 생기부.pdf'"""
         return Path(self.download_dir) / self.artifact_foldername / self.filename
 
-    def download_raw_doc(self):
+    def download_raw_doc(self) -> Path:
+        """Download the raw document from S3 to local_raw_doc_path. Returns the local path."""
         return download_from_s3(
             bucket=self.bucket,
             prefix=self.raw_doc_prefix,
