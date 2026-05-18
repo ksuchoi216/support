@@ -15,8 +15,21 @@ from pydantic import BaseModel
 from .chains import build_chain
 from .langfuse import load_prompt
 from core.support.config import OpenAINodeConfig
+import time
 
 load_dotenv(find_dotenv(usecwd=True))
+# TODO: decorator to measure time for invoke and batch and then logging.
+
+
+def measure_time(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        logger.info(f"{func.__name__} execution time: {end_time - start_time} seconds")
+        return result
+
+    return wrapper
 
 
 class PromptGenerator:
@@ -92,6 +105,7 @@ class PromptGenerator:
             return output.model_dump()
         return output
 
+    @measure_time
     def invoke(
         self,
         input_data: dict[str, Any],
@@ -104,6 +118,7 @@ class PromptGenerator:
         # if output_parser is a PydanticOutputParser, it will use dump
         return self._serialize_output(output)
 
+    @measure_time
     def batch(
         self,
         input_data: dict[str, Any],
