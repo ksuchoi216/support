@@ -5,11 +5,7 @@ from typing import Dict, List, TypedDict
 
 import boto3
 
-from src.errors import (
-    OrganizedTextEmptyError,
-    S3DownloadError,
-    UtilsValidationError,
-)
+
 from loguru import logger
 from core.support import load_file
 
@@ -45,10 +41,7 @@ def extract_bucket_from_s3_url(s3_url: str) -> str:
         bucket = s3_url.split("/")[2]
         return bucket
     else:
-        raise UtilsValidationError(
-            f"Invalid S3 PDF path: {s3_url}",
-            details={"s3_pdf_path": s3_url},
-        )
+        raise ValueError(f"Invalid S3 PDF path: {s3_url}")
 
 
 def extract_doc_prefix_from_s3_url(s3_url: str, bucket: str = None) -> tuple[str, str]:
@@ -97,10 +90,7 @@ def upload_to_s3(
         body = data.encode(encoding)
         content_type = "text/plain"
     else:
-        raise UtilsValidationError(
-            details={"actual_type": type(data).__name__},
-            message="Data must be dict, list, or str.",
-        )
+        raise TypeError(f"Data must be dict, list, or str, not {type(data).__name__}")
 
     # 업로드 실행
     s3.put_object(Bucket=bucket, Key=prefix, Body=body, ContentType=content_type)
@@ -139,13 +129,8 @@ def download_from_s3(
         logger.info("Downloaded from s3://%s/%s to %s", bucket, prefix, local_path)
         return str(local_path)
     except Exception as e:
-        raise S3DownloadError(
-            f"Failed to download from s3://{bucket}/{prefix} to {local_path}: {str(e)}",
-            details={
-                "s3_bucket": bucket,
-                "s3_prefix": prefix,
-                "local_path": local_path,
-            },
+        raise RuntimeError(
+            f"Failed to download from s3://{bucket}/{prefix} to {local_path}: {str(e)}"
         ) from e
 
 
@@ -355,12 +340,8 @@ def create_merged_text(
 
         # if organized_text is empty, raise error
         if not organized_text.strip():
-            raise OrganizedTextEmptyError(
-                details={
-                    "prefix": prefix,
-                    "bucket": bucket,
-                    "local_path": local_path,
-                },
+            raise ValueError(
+                f"The organized text from s3://{bucket}/{prefix} is empty."
             )
 
         organized_texts.append(organized_text)
