@@ -47,6 +47,8 @@ def load_prompt(
 
     prompt = get_client().get_prompt(prompt_key).get_langchain_prompt()
     logger.info("Prompt {} loaded from Langfuse.", prompt_key)
+    # log 200 char of prompt
+    logger.info("Prompt {} preview: {}.", prompt_key, prompt[:200])
     if isinstance(prompt, BasePromptTemplate):
         return prompt
     if isinstance(prompt, str):

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from functools import lru_cache
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Literal
-
-import yaml
 from pydantic import BaseModel, ConfigDict
+
+from core.support.file import load_file
+
 
 ReasoningEffort = Literal["none", "low", "medium", "high", "xhigh"]
 
@@ -28,8 +30,8 @@ class OpenAINodeConfig(BaseModel):
     verbosity: Literal["low", "medium", "high"] | None = None
 
 
-class OpenAIConfigCollection(dict[str, OpenAINodeConfig]):
-    def __getattr__(self, name: str) -> OpenAINodeConfig:
+class OpenAIConfigCollection(dict[str, Any]):
+    def __getattr__(self, name: str) -> Any:
         try:
             return self[name]
         except KeyError as exc:
@@ -39,17 +41,7 @@ class OpenAIConfigCollection(dict[str, OpenAINodeConfig]):
         return sorted(set(super().__dir__()) | set(self.keys()))
 
 
-def _load_config(
-    config_path: str | Path,
-) -> dict[str, dict[str, Any]]:
-    path = Path(config_path)
-    if not path.exists():
-        raise FileNotFoundError(f"Config file not found: {path}")
-    with path.open("r", encoding="utf-8") as fp:
-        data = yaml.safe_load(fp) or {}
-    if not isinstance(data, dict):
-        raise ValueError(f"Invalid config root in {path}: expected dict")
-    return data
+
 
 
 def to_namespace(value: Any) -> Any:
@@ -64,26 +56,47 @@ def to_namespace(value: Any) -> Any:
     return value
 
 
+def _parse_model_session(session_name: str, data: Any) -> OpenAIConfigCollection:
+    if not isinstance(data, dict):
+        raise ValueError(f"Invalid session config: {session_name}")
+
+    configs = OpenAIConfigCollection()
+    for node_name, node_data in data.items():
+        if not isinstance(node_data, dict) or "model_name" not in node_data:
+            raise ValueError(f"Invalid node config: {session_name}.{node_name}")
+        configs[node_name] = OpenAINodeConfig.model_validate(node_data)
+    return configs
+
+
+def _apply_test_model_names(config: Any) -> None:
+    if isinstance(config, OpenAINodeConfig):
+        if not config.model_name.endswith("-mini"):
+            config.model_name = f"{config.model_name}-mini"
+        return
+
+    if isinstance(config, dict):
+        for item in config.values():
+            _apply_test_model_names(item)
+
+
 @lru_cache(maxsize=None)
 def load_model_config(
     config_path: str | Path = "configs/models.yaml",
 ) -> OpenAIConfigCollection:
-    session_config = _load_config(config_path)
+    session_config = load_file(config_path) or {}
 
     configs = OpenAIConfigCollection()
-    for node_name, node_data in session_config.items():
-        if not isinstance(node_data, dict):
-            raise ValueError(f"Invalid node config: {node_name}")
-        configs[node_name] = OpenAINodeConfig.model_validate(node_data)
+    for session_name, session_data in session_config.items():
+        configs[session_name] = _parse_model_session(session_name, session_data)
 
-    return to_namespace(configs)
+    return configs
 
 
 def load_general_config(
     config_path: str | Path = "configs/general.yaml",
 ):
 
-    config = _load_config(config_path)
+    config = load_file(config_path) or {}
     return to_namespace(config)
 
 
@@ -106,11 +119,10 @@ def load_config(
         if model_config_path is not None
         else OpenAIConfigCollection()
     )
+    model_config = deepcopy(model_config)
 
     if is_test:
-        for node_config in vars(model_config).values():
-            if not node_config.model_name.endswith("-mini"):
-                node_config.model_name = f"{node_config.model_name}-mini"
+        _apply_test_model_names(model_config)
 
     return SimpleNamespace(
         **vars(general_config),
